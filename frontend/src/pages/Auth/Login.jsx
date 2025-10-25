@@ -4,6 +4,20 @@ import Header from "../../components/Header";
 import { useApp } from "../../context/AppContext";
 import "../Home/home.css";
 
+// CSS cho animation
+const modalStyles = `
+  @keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+`;
+
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = modalStyles;
+  document.head.appendChild(styleSheet);
+}
+
 export default function Login() {
   const { navigateTo, login } = useApp();
   const [formData, setFormData] = useState({
@@ -11,6 +25,8 @@ export default function Login() {
     password: "",
   });
   const [activeField, setActiveField] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [modalData, setModalData] = useState({ type: '', message: '' });
 
   useEffect(() => {
     window.navigateToRegister = () => navigateTo('register');
@@ -42,13 +58,22 @@ export default function Login() {
       console.log('Response data:', data);
       
       if (response.ok) {
-        login(data.user || { name: formData.email });
+        setModalData({ type: 'success', message: 'Đăng nhập thành công!' });
+        setShowModal(true);
+        setTimeout(() => {
+          setShowModal(false);
+          login(data.user || { name: formData.email });
+        }, 1500);
       } else {
-        alert(data.message || 'Đăng nhập thất bại!');
+        setModalData({ type: 'error', message: data.message || 'Đăng nhập thất bại!' });
+        setShowModal(true);
+        setTimeout(() => setShowModal(false), 2000);
       }
     } catch (error) {
       console.error('Error details:', error);
-      alert('Lỗi kết nối server!');
+      setModalData({ type: 'error', message: 'Lỗi kết nối server!' });
+      setShowModal(true);
+      setTimeout(() => setShowModal(false), 2000);
     }
   };
   
@@ -110,6 +135,47 @@ export default function Login() {
           </button>
         </p>
       </div>
+
+      {/* Modal thông báo */}
+      {showModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '20px',
+            padding: '30px',
+            maxWidth: '400px',
+            width: '90%',
+            textAlign: 'center',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+            animation: 'modalFadeIn 0.3s ease-out'
+          }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>
+              {modalData.type === 'success' ? '✅' : '❌'}
+            </div>
+            <h3 style={{ 
+              color: modalData.type === 'success' ? '#4caf50' : '#f44336', 
+              marginBottom: '15px', 
+              fontSize: '20px' 
+            }}>
+              {modalData.type === 'success' ? 'Thành công!' : 'Lỗi!'}
+            </h3>
+            <p style={{ color: '#666', fontSize: '16px', lineHeight: '1.5' }}>
+              {modalData.message}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
     </div>
   );

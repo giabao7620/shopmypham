@@ -5,7 +5,7 @@ import Home from "./pages/Home/Home";
 import ProductDetail from "./pages/Product/ProductDetail";
 import Cart from "./pages/Cart/Cart";
 import Checkout from "./pages/Checkout/Checkout";
-import SonLi from "./pages/SonLi/SonLi";
+// import SonLi from "./pages/SonLi/SonLi";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import CategoryProducts from "./pages/Category/CategoryProducts";
 import SubcategoryProducts from "./pages/Subcategory/SubcategoryProducts";
@@ -35,8 +35,8 @@ function AppContent() {
     case "checkout":
       return <Checkout />;
 
-    case "sonli":
-      return <SonLi />;
+    // case "sonli":
+    //   return <SonLi />;
 
     case "adminDashboard":
       return <AdminDashboard />;

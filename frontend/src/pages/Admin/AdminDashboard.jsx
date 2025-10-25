@@ -1,216 +1,296 @@
-// import { useState, useEffect } from "react";
-// import axios from "axios";
-
-// export default function AdminDashboard() {
-//   const [products, setProducts] = useState([]);
-//   const token = localStorage.getItem("adminToken");
-
-//   useEffect(() => {
-//     axios.get("http://localhost:3000/api/products")
-//       .then(res => setProducts(res.data))
-//       .catch(err => console.error(err));
-//   }, []);
-
-//   const deleteProduct = async (id) => {
-//     if (!window.confirm("Xóa sản phẩm này?")) return;
-//     await axios.delete(`http://localhost:3000/api/products/${id}`, {
-//       headers: { Authorization: `Bearer ${token}` },
-//     });
-//     setProducts(products.filter(p => p._id !== id));
-//   };
-
-//   return (
-//     <div className="p-8">
-//       <h1 className="text-2xl font-bold mb-4">Quản lý sản phẩm</h1>
-//       <table className="w-full border">
-//         <thead>
-//           <tr className="bg-gray-200">
-//             <th className="p-2 border">Tên</th>
-//             <th className="p-2 border">Giá</th>
-//             <th className="p-2 border">Hành động</th>
-//           </tr>
-//         </thead>
-//         <tbody>
-//           {products.map(p => (
-//             <tr key={p._id}>
-//               <td className="border p-2">{p.name}</td>
-//               <td className="border p-2">{p.price}</td>
-//               <td className="border p-2">
-//                 <button className="bg-red-500 text-white px-3 py-1 mr-2"
-//                   onClick={() => deleteProduct(p._id)}>Xóa</button>
-//               </td>
-//             </tr>
-//           ))}
-//         </tbody>
-//       </table>
-//     </div>
-//   );
-// }
-
-
 import React, { useEffect, useState } from "react";
+import { useApp } from "../../context/AppContext";
 import axios from "axios";
+import BASE_URL from "../../config/api";
+
+// CSS cho animation
+const modalStyles = `
+  @keyframes modalSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-50px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+`;
+
+// Thêm styles vào head
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = modalStyles;
+  document.head.appendChild(styleSheet);
+}
 
 export default function AdminDashboard() {
+  const { navigateTo, user } = useApp();
   const [products, setProducts] = useState([]);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    stock: "",
-    subcategories_id: "",
-    image: "",
-  });
-  const [editingId, setEditingId] = useState(null);
+  const [stats, setStats] = useState({ totalProducts: 0, totalUsers: 0 });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
 
-  const API_URL = "http://localhost:8888/products"; // 🔹 đúng endpoint
+  useEffect(() => {
+    fetchProducts();
+    fetchUsers();
+  }, []);
 
-  // 🧾 Lấy danh sách sản phẩm
   const fetchProducts = async () => {
     try {
-      const res = await axios.get(API_URL);
+      const res = await axios.get(`${BASE_URL}/products`);
       setProducts(res.data);
+      setStats(prev => ({ ...prev, totalProducts: res.data.length }));
     } catch (err) {
       console.error("Lỗi khi lấy sản phẩm:", err);
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  // ✏️ Thêm hoặc cập nhật sản phẩm
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchUsers = async () => {
     try {
-      if (editingId) {
-        await axios.put(`${API_URL}/${editingId}`, formData);
-        alert("✅ Cập nhật sản phẩm thành công!");
-      } else {
-        await axios.post(API_URL, formData);
-        alert("✅ Thêm sản phẩm thành công!");
-      }
-      setFormData({ name: "", description: "", price: "", stock: "", subcategories_id: "", image: "" });
-      setEditingId(null);
-      fetchProducts();
+      const res = await axios.get(`${BASE_URL}/users`);
+      setStats(prev => ({ ...prev, totalUsers: res.data.length }));
     } catch (err) {
-      console.error("❌ Lỗi khi lưu sản phẩm:", err);
+      console.error("Lỗi khi lấy người dùng:", err);
     }
   };
 
-  // 🗑️ Xóa sản phẩm
-  const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
-    try {
-      await axios.delete(`${API_URL}/${id}`);
-      alert("🗑️ Đã xóa sản phẩm");
-      fetchProducts();
-    } catch (err) {
-      console.error("❌ Lỗi khi xóa:", err);
-    }
+  const openDeleteModal = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
   };
 
-  // 🧰 Chọn sản phẩm để sửa
-  const handleEdit = (product) => {
-    setEditingId(product._id);
-    setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      stock: product.stock,
-      subcategories_id: product.subcategories_id || "",
-      image: product.image || "",
-    });
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setProductToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+    try {
+      await axios.delete(`${BASE_URL}/products/${productToDelete._id}`);
+      fetchProducts();
+      closeDeleteModal();
+    } catch (err) {
+      console.error("Lỗi khi xóa:", err);
+    }
   };
 
   return (
-    <div style={{ padding: "30px", maxWidth: "900px", margin: "0 auto" }}>
-      <h1 style={{ color: "#e91e63", textAlign: "center" }}>🛍️ Quản lý sản phẩm</h1>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+      {/* Header */}
+      <header style={{
+        backgroundColor: 'white',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        padding: '20px 0'
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h1 style={{ color: '#e91e63', margin: 0, fontSize: '28px' }}>🛠️ Trang Quản Trị</h1>
+            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+              <span style={{ color: '#666' }}>Xin chào, {user?.name}</span>
+              <button
+                onClick={() => navigateTo('home')}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#e91e63',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '25px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                🏠 Về trang chủ
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      {/* Form thêm / sửa */}
-      <form onSubmit={handleSubmit} style={{ marginBottom: "40px" }}>
-        <input
-          type="text"
-          placeholder="Tên sản phẩm"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-        <input
-          type="text"
-          placeholder="Mô tả"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-        />
-        <input
-          type="number"
-          placeholder="Giá"
-          value={formData.price}
-          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-          required
-        />
-        <input
-          type="number"
-          placeholder="Tồn kho"
-          value={formData.stock}
-          onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="ID danh mục con (subcategory)"
-          value={formData.subcategories_id}
-          onChange={(e) => setFormData({ ...formData, subcategories_id: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="URL hình ảnh"
-          value={formData.image}
-          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-        />
-        <button type="submit" style={{ marginTop: "10px", background: "#e91e63", color: "#fff" }}>
-          {editingId ? "💾 Cập nhật" : "➕ Thêm sản phẩm"}
-        </button>
-      </form>
+      {/* Main Content */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '30px 20px' }}>
+        {/* Stats Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '25px',
+            borderRadius: '15px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '40px', marginBottom: '10px' }}>📦</div>
+            <h3 style={{ color: '#e91e63', margin: '0 0 5px 0' }}>Tổng sản phẩm</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', margin: 0 }}>{stats.totalProducts}</p>
+          </div>
+          
+          <div style={{
+            backgroundColor: 'white',
+            padding: '25px',
+            borderRadius: '15px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '40px', marginBottom: '10px' }}>👥</div>
+            <h3 style={{ color: '#e91e63', margin: '0 0 5px 0' }}>Người dùng</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', margin: 0 }}>{stats.totalUsers}</p>
+          </div>
 
-      {/* Danh sách sản phẩm */}
-      <div>
-        <h2>📋 Danh sách sản phẩm</h2>
-        {products.length === 0 ? (
-          <p>Chưa có sản phẩm nào.</p>
-        ) : (
-          <table border="1" width="100%" cellPadding="10" style={{ borderCollapse: "collapse" }}>
-            <thead style={{ background: "#f8bbd0" }}>
-              <tr>
-                <th>Tên</th>
-                <th>Giá</th>
-                <th>Tồn kho</th>
-                <th>Hình ảnh</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p) => (
-                <tr key={p._id}>
-                  <td>{p.name}</td>
-                  <td>{p.price}</td>
-                  <td>{p.stock}</td>
-                  <td>
-                    {p.image ? (
-                      <img src={p.image} alt={p.name} width="50" />
-                    ) : (
-                      "Không có hình"
-                    )}
-                  </td>
-                  <td>
-                    <button onClick={() => handleEdit(p)}>✏️ Sửa</button>{" "}
-                    <button onClick={() => handleDelete(p._id)}>🗑️ Xóa</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          <div style={{
+            backgroundColor: 'white',
+            padding: '25px',
+            borderRadius: '15px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '40px', marginBottom: '10px' }}>💰</div>
+            <h3 style={{ color: '#e91e63', margin: '0 0 5px 0' }}>Doanh thu</h3>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', margin: 0 }}>-</p>
+          </div>
+        </div>
+
+        {/* Products Management */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '15px',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+          overflow: 'hidden'
+        }}>
+          <div style={{ padding: '25px', borderBottom: '1px solid #eee' }}>
+            <h2 style={{ color: '#e91e63', margin: 0, fontSize: '22px' }}>📋 Quản lý sản phẩm</h2>
+          </div>
+          
+          <div style={{ padding: '25px' }}>
+            {products.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#666', fontSize: '16px' }}>Chưa có sản phẩm nào.</p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8bbd0' }}>
+                      <th style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid #e91e63' }}>Hình ảnh</th>
+                      <th style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid #e91e63' }}>Tên sản phẩm</th>
+                      <th style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid #e91e63' }}>Giá</th>
+                      <th style={{ padding: '15px', textAlign: 'left', borderBottom: '2px solid #e91e63' }}>Tồn kho</th>
+                      <th style={{ padding: '15px', textAlign: 'center', borderBottom: '2px solid #e91e63' }}>Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.slice(0, 10).map((product) => (
+                      <tr key={product._id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '15px' }}>
+                          {product.image ? (
+                            <img 
+                              src={product.image} 
+                              alt={product.name} 
+                              style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '8px' }}
+                            />
+                          ) : (
+                            <div style={{ width: '50px', height: '50px', backgroundColor: '#f0f0f0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📷</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '15px', fontWeight: '500' }}>{product.name}</td>
+                        <td style={{ padding: '15px', color: '#e91e63', fontWeight: 'bold' }}>{product.price?.toLocaleString()}đ</td>
+                        <td style={{ padding: '15px' }}>{product.stock || 0}</td>
+                        <td style={{ padding: '15px', textAlign: 'center' }}>
+                          <button
+                            onClick={() => openDeleteModal(product)}
+                            style={{
+                              padding: '8px 15px',
+                              backgroundColor: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '20px',
+                              cursor: 'pointer',
+                              fontSize: '12px'
+                            }}
+                          >
+                            🗑️ Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {products.length > 10 && (
+                  <p style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>
+                    Hiển thị 10/{products.length} sản phẩm
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '20px',
+            padding: '30px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+            textAlign: 'center',
+            animation: 'modalSlideIn 0.3s ease-out'
+          }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>⚠️</div>
+            <h3 style={{ color: '#333', marginBottom: '15px', fontSize: '20px' }}>Xác nhận xóa sản phẩm</h3>
+            <p style={{ color: '#666', marginBottom: '25px', lineHeight: '1.5' }}>
+              Bạn có chắc chắn muốn xóa sản phẩm <br/>
+              <strong style={{ color: '#e91e63' }}>"{ productToDelete?.name }"</strong>?
+            </p>
+            <p style={{ color: '#999', fontSize: '14px', marginBottom: '30px' }}>
+              Hành động này không thể hoàn tác!
+            </p>
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+              <button
+                onClick={closeDeleteModal}
+                style={{
+                  padding: '12px 25px',
+                  backgroundColor: '#f5f5f5',
+                  color: '#666',
+                  border: 'none',
+                  borderRadius: '25px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDelete}
+                style={{
+                  padding: '12px 25px',
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '25px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                🗑️ Xóa ngay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

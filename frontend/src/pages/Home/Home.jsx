@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 import CartIcon from "../../components/CartIcon";
 import { FaList } from "react-icons/fa";
+import BASE_URL from "../../config/api";
 
 import "./home.css";
 
 export default function Home() {
-  const { user, logout, viewProduct, navigateTo, addToCart, viewCategoryProducts, viewSubcategoryProducts } = useApp();
+  const { user, logout, viewProduct, navigateTo, navigateToAdmin, addToCart, viewCategoryProducts, viewSubcategoryProducts } = useApp();
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState(null);
   const [menuTimeout, setMenuTimeout] = useState(null);
@@ -39,7 +40,7 @@ export default function Home() {
 
   const fetchAllProducts = async () => {
     try {
-      const response = await fetch('http://localhost:8888/products');
+      const response = await fetch(`${BASE_URL}/products`);
       if (response.ok) {
         const data = await response.json();
         setAllProducts(data);
@@ -60,7 +61,7 @@ export default function Home() {
 
   const fetchProductCount = async (subcategoryId) => {
     try {
-      const response = await fetch(`http://localhost:8888/products/subcategory/${subcategoryId}`);
+      const response = await fetch(`${BASE_URL}/products/subcategory/${subcategoryId}`);
       if (response.ok) {
         const products = await response.json();
         return products.length;
@@ -77,8 +78,8 @@ export default function Home() {
     console.log('Current hoveredSubcategories:', hoveredSubcategories);
 
     try {
-      console.log('Fetching from API:', `http://localhost:8888/subcategories/category/${categoryId}`);
-      const response = await fetch(`http://localhost:8888/subcategories/category/${categoryId}`);
+      console.log('Fetching from API:', `${BASE_URL}/subcategories/category/${categoryId}`);
+      const response = await fetch(`${BASE_URL}/subcategories/category/${categoryId}`);
       console.log('API Response status:', response.status);
 
       if (!response.ok) {
@@ -164,6 +165,22 @@ export default function Home() {
                   <span style={{ fontSize: '14px', color: '#666' }}>
                     Xin chào, {user.name} {user.role === 'admin' && '(Admin)'}
                   </span>
+                  {user.role === 'admin' && (
+                    <button
+                      onClick={navigateToAdmin}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#ff9800',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Quản trị
+                    </button>
+                  )}
                   <button
                     onClick={logout}
                     style={{
