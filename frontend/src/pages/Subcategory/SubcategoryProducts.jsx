@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 
 export default function SubcategoryProducts() {
-  const { navigateTo, addToCart, subcategoryId, subcategoryName } = useApp();
+  const { navigateTo, addToCart, viewProduct, subcategoryId, subcategoryName } = useApp();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortType, setSortType] = useState('default');
@@ -11,7 +11,7 @@ export default function SubcategoryProducts() {
     if (subcategoryId) {
       fetchProducts();
     }
-  }, [subcategoryId]);
+  }, [subcategoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchProducts = async (sort = 'default') => {
     try {
@@ -200,6 +200,7 @@ export default function SubcategoryProducts() {
                   cursor: 'pointer',
                   border: '1px solid rgba(233, 30, 99, 0.05)'
                 }}
+                onClick={() => viewProduct(product._id)}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-8px) scale(1.02)';
                   e.currentTarget.style.boxShadow = '0 20px 40px rgba(233, 30, 99, 0.15)';
@@ -280,7 +281,10 @@ export default function SubcategoryProducts() {
                       </div>
                     </div>
                     <button
-                      onClick={() => addToCart(product)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart(product);
+                      }}
                       disabled={product.stock === 0}
                       style={{
                         width: '100%',

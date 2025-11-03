@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 
 export default function AllProducts() {
-  const { navigateTo, addToCart } = useApp();
+  const { navigateTo, addToCart, viewProduct } = useApp();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -98,6 +98,7 @@ export default function AllProducts() {
                 transition: 'all 0.3s',
                 cursor: 'pointer'
               }}
+              onClick={() => viewProduct(product._id)}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-5px)';
                 e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.15)';
@@ -122,7 +123,10 @@ export default function AllProducts() {
                     <p style={{ fontSize: '13px', color: '#999', margin: 0 }}>Còn {product.stock}</p>
                   </div>
                   <button
-                    onClick={() => addToCart(product)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addToCart(product);
+                    }}
                     style={{
                       width: '100%',
                       padding: '12px',
