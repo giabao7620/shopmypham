@@ -2,18 +2,22 @@ import { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 import CartIcon from "../../components/CartIcon";
 import { FaList } from "react-icons/fa";
+import BASE_URL from "../../config/api";
 
 import "./home.css";
 
 export default function Home() {
-  const { user, logout, viewProduct, navigateTo, addToCart, viewCategoryProducts, viewSubcategoryProducts } = useApp();
+  const { user, logout, viewProduct, navigateTo, navigateToAdmin, addToCart, viewSubcategoryProducts } = useApp();
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState(null);
   const [menuTimeout, setMenuTimeout] = useState(null);
   const [hoveredSubcategories, setHoveredSubcategories] = useState({});
   const [subcategoryProductCounts, setSubcategoryProductCounts] = useState({});
   const [allProducts, setAllProducts] = useState([]);
+  const [topSellingProducts, setTopSellingProducts] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
 
   const heroImages = [
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR9icr06OWIB8OMh1fSx_iAAyOpJeh9Ac1Epw&s",
@@ -28,6 +32,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchAllProducts();
+    fetchTopSellingProducts();
   }, []);
 
   useEffect(() => {
@@ -39,13 +44,27 @@ export default function Home() {
 
   const fetchAllProducts = async () => {
     try {
-      const response = await fetch('http://localhost:8888/products');
+      const response = await fetch(`${BASE_URL}/products`);
       if (response.ok) {
         const data = await response.json();
         setAllProducts(data);
       }
     } catch (error) {
       console.error('Error fetching all products:', error);
+    }
+  };
+
+  const fetchTopSellingProducts = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/orders/top-selling?limit=3`);
+      if (response.ok) {
+        const data = await response.json();
+        setTopSellingProducts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching top selling products:', error);
+      // Fallback nếu không có dữ liệu orders
+      setTopSellingProducts(allProducts.slice(0, 3));
     }
   };
 
@@ -60,7 +79,7 @@ export default function Home() {
 
   const fetchProductCount = async (subcategoryId) => {
     try {
-      const response = await fetch(`http://localhost:8888/products/subcategory/${subcategoryId}`);
+      const response = await fetch(`${BASE_URL}/products/subcategory/${subcategoryId}`);
       if (response.ok) {
         const products = await response.json();
         return products.length;
@@ -72,13 +91,37 @@ export default function Home() {
     }
   };
 
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const filtered = allProducts.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setSearchResults(filtered);
+  };
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    if (value.trim()) {
+      const filtered = allProducts.filter(product =>
+        product.name.toLowerCase().includes(value.toLowerCase())
+      );
+      setSearchResults(filtered);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
   const fetchHoveredSubcategories = async (categoryId) => {
     console.log('fetchHoveredSubcategories called with categoryId:', categoryId);
     console.log('Current hoveredSubcategories:', hoveredSubcategories);
 
     try {
-      console.log('Fetching from API:', `http://localhost:8888/subcategories/category/${categoryId}`);
-      const response = await fetch(`http://localhost:8888/subcategories/category/${categoryId}`);
+      console.log('Fetching from API:', `${BASE_URL}/subcategories/category/${categoryId}`);
+      const response = await fetch(`${BASE_URL}/subcategories/category/${categoryId}`);
       console.log('API Response status:', response.status);
 
       if (!response.ok) {
@@ -131,30 +174,149 @@ export default function Home() {
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            height: '70px'
+            height: '70px',
+            gap: '30px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-              <div onClick={() => navigateTo('home')} style={{ cursor: 'pointer' }}>
-                <h1 style={{
-                  fontFamily: "'Playfair Display', serif",
-                  fontSize: '32px',
-                  background: 'linear-gradient(90deg, #f8b500, #ff6f91, #a86ff0, #f8b500)',
-                  backgroundSize: '300% 100%',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                  fontWeight: '600',
-                  margin: 0,
-                  lineHeight: '1',
-                  animation: 'gradientMove 3s ease-in-out infinite'
+            {/* Logo */}
+            <div onClick={() => navigateTo('home')} style={{ cursor: 'pointer', flexShrink: 0 }}>
+              <h1 style={{
+                fontFamily: "'Playfair Display', serif",
+                fontSize: '32px',
+                background: 'linear-gradient(90deg, #f8b500, #ff6f91, #a86ff0, #f8b500)',
+                backgroundSize: '300% 100%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                color: 'transparent',
+                fontWeight: '600',
+                margin: 0,
+                lineHeight: '1',
+                animation: 'gradientMove 3s ease-in-out infinite'
+              }}>
+                BeautyStore
+              </h1>
+              <p style={{ color: '#555', letterSpacing: '2px', fontSize: '10px', margin: '2px 0 0 0', textAlign: 'center' }}>COSMETICS</p>
+            </div>
+
+            {/* Thanh tìm kiếm */}
+            <div style={{ position: 'relative', flex: 1, maxWidth: '500px', margin: '0 auto' }}>
+              <input
+                type="text"
+                placeholder="Tìm kiếm sản phẩm..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                style={{
+                  width: '100%',
+                  padding: '12px 45px 12px 20px',
+                  border: '2px solid #f0f0f0',
+                  borderRadius: '25px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'all 0.3s',
+                  backgroundColor: '#ffe6f2'
+                }}
+                // onFocus={(e) => e.target.style.borderColor = '#e91e63'}
+                onBlur={(e) => setTimeout(() => e.target.style.borderColor = '#f0f0f0', 200)}
+              />
+              <button
+                onClick={handleSearch}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'pink',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: '14px'
                 }}>
-                  BeautyStore
-                </h1>
-                <p style={{ color: '#555', letterSpacing: '2px', fontSize: '10px', margin: '2px 0 0 0', textAlign: 'center' }}>COSMETICS</p>
-              </div>
+                🔍
+              </button>
+
+              {/* Dropdown kết quả tìm kiếm */}
+              {searchResults.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: 'white',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '15px',
+                  boxShadow: '0 8px 25px rgba(0,0,0,0.15)',
+                  zIndex: 1000,
+                  marginTop: '5px',
+                  overflow: 'hidden'
+                }}>
+                  {searchResults.slice(0, 4).map(product => (
+                    <div
+                      key={product._id}
+                      onClick={() => {
+                        viewProduct(product._id);
+                        setSearchTerm('');
+                        setSearchResults([]);
+                      }}
+                      style={{
+                        padding: '12px 15px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #f0f0f0'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                    >
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px' }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>{product.name}</div>
+                        <div style={{ fontSize: '13px', color: '#e91e63', fontWeight: 'bold' }}>{product.price?.toLocaleString()}đ</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div 
+                    onClick={() => {
+                      // Tạo trang kết quả tìm kiếm hoặc chuyển đến trang tất cả sản phẩm
+                      navigateTo('allProducts');
+                      setSearchTerm('');
+                      setSearchResults([]);
+                    }}
+                    style={{
+                      padding: '12px 15px',
+                      textAlign: 'center',
+                      backgroundColor: '#f8f9fa',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      color: '#e91e63',
+                      borderTop: '1px solid #f0f0f0'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.backgroundColor = '#e91e63';
+                      e.target.style.color = 'white';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.backgroundColor = '#f8f9fa';
+                      e.target.style.color = '#e91e63';
+                    }}
+                  >
+                    Xem tất cả {searchResults.length} kết quả »
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -164,6 +326,22 @@ export default function Home() {
                   <span style={{ fontSize: '14px', color: '#666' }}>
                     Xin chào, {user.name} {user.role === 'admin' && '(Admin)'}
                   </span>
+                  {user.role === 'admin' && (
+                    <button
+                      onClick={navigateToAdmin}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#ff9800',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '20px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Quản trị
+                    </button>
+                  )}
                   <button
                     onClick={logout}
                     style={{
@@ -424,7 +602,7 @@ export default function Home() {
         padding: '60px 20px'
       }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <img 
+          <img
             src={heroImages[currentImageIndex]}
             alt="Beauty products"
             style={{ width: '100%', height: '400px', objectFit: 'cover', borderRadius: '15px' }}
@@ -500,16 +678,17 @@ export default function Home() {
                 cursor: 'pointer',
                 border: '1px solid #f0f0f0'
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-5px)';
-                e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
-              }}>
-                <img 
-                  src={product.image} 
+                onClick={() => viewProduct(product._id)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-5px)';
+                  e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.15)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+                }}>
+                <img
+                  src={product.image}
                   alt={product.name}
                   style={{ width: '100%', height: '200px', objectFit: 'cover' }}
                 />
@@ -521,7 +700,10 @@ export default function Home() {
                     {product.price.toLocaleString()}đ
                   </p>
                   <button
-                    onClick={() => addToCart(product)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addToCart(product);
+                    }}
                     style={{
                       width: '100%',
                       padding: '10px',
@@ -546,7 +728,129 @@ export default function Home() {
         </div>
       </section>
 
-
+      {/* Top sản phẩm bán chạy */}
+      <section style={{ padding: '60px 20px', backgroundColor: '#f8f9fa' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '50px' }}>
+            <h3 style={{
+              fontSize: '32px',
+              fontWeight: 'bold',
+              color: '#333',
+              margin: '0 0 15px 0'
+            }}>
+               Top Sản Phẩm Bán Chạy
+            </h3>
+            <p style={{ color: '#666', fontSize: '16px', margin: 0 }}>
+              Những sản phẩm được yêu thích nhất
+            </p>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '30px'
+          }}>
+            {(topSellingProducts.length > 0 ? topSellingProducts : allProducts.slice(4, 7)).map((product, index) => (
+              <div key={product._id} style={{
+                backgroundColor: 'white',
+                borderRadius: '20px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 30px rgba(233, 30, 99, 0.1)',
+                transition: 'all 0.3s',
+                cursor: 'pointer',
+                border: '2px solid transparent',
+                position: 'relative'
+              }}
+                onClick={() => viewProduct(product._id)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-8px)';
+                  e.currentTarget.style.boxShadow = '0 15px 40px rgba(233, 30, 99, 0.2)';
+                  e.currentTarget.style.borderColor = '#e91e63';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 8px 30px rgba(233, 30, 99, 0.1)';
+                  e.currentTarget.style.borderColor = 'transparent';
+                }}>
+                {/* Badge thứ hạng */}
+                <div style={{
+                  position: 'absolute',
+                  top: '15px',
+                  left: '15px',
+                  backgroundColor: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : '#cd7f32',
+                  color: 'white',
+                  padding: '8px 12px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  zIndex: 1
+                }}>
+                  #{index + 1}
+                </div>
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  style={{ width: '100%', height: '220px', objectFit: 'cover' }}
+                />
+                <div style={{ padding: '25px' }}>
+                  <h4 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 12px 0', color: '#333', lineHeight: '1.4' }}>
+                    {product.name}
+                  </h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#e91e63', margin: 0 }}>
+                      {product.price.toLocaleString()}đ
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span style={{ color: '#ffd700', fontSize: '14px' }}>★★★★★</span>
+                      <span style={{ fontSize: '12px', color: '#999' }}>(4.8)</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                    <div style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: '#4caf50'
+                    }}></div>
+                    <span style={{ fontSize: '13px', color: '#4caf50', fontWeight: '500' }}>
+                      Đã bán: {product.totalSold || 0} sản phẩm
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addToCart(product);
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      background: 'linear-gradient(45deg, #e91e63, #ff6b9d)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '25px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      transition: 'all 0.3s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = 'translateY(-2px)';
+                      e.target.style.boxShadow = '0 8px 20px rgba(233, 30, 99, 0.4)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = 'translateY(0)';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  >
+                    Thêm vào giỏ
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer style={{
@@ -582,10 +886,10 @@ export default function Home() {
             marginBottom: '30px',
             flexWrap: 'wrap'
           }}>
-            <a href="#" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Về chúng tôi</a>
-            <a href="#" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Liên hệ</a>
-            <a href="#" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Chính sách</a>
-            <a href="#" style={{ color: 'white', textDecoration: 'none', opacity: 0.8 }}>Hỗ trợ</a>
+            <button style={{ background: 'none', border: 'none', color: 'white', textDecoration: 'none', opacity: 0.8, cursor: 'pointer' }}>Về chúng tôi</button>
+            <button style={{ background: 'none', border: 'none', color: 'white', textDecoration: 'none', opacity: 0.8, cursor: 'pointer' }}>Liên hệ</button>
+            <button style={{ background: 'none', border: 'none', color: 'white', textDecoration: 'none', opacity: 0.8, cursor: 'pointer' }}>Chính sách</button>
+            <button style={{ background: 'none', border: 'none', color: 'white', textDecoration: 'none', opacity: 0.8, cursor: 'pointer' }}>Hỗ trợ</button>
           </div>
           <p style={{ fontSize: '14px', opacity: 0.6, margin: 0 }}>
             © 2024 BeautyStore. All rights reserved.

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const AppContext = createContext();
 
@@ -20,6 +20,40 @@ export const AppProvider = ({ children }) => {
   const [subcategoryName, setSubcategoryName] = useState(null);
   const [cart, setCart] = useState({ items: [] });
 
+  // Kiểm tra token khi app khởi động
+  useEffect(() => {
+    const checkAuthToken = async () => {
+      const token = localStorage.getItem('authToken');
+      const userData = localStorage.getItem('userData');
+      
+      if (token && userData) {
+        try {
+          const user = JSON.parse(userData);
+          setIsLoggedIn(true);
+          setUser(user);
+          
+          // Tải giỏ hàng từ database
+          if (user._id) {
+            try {
+              const response = await fetch(`http://localhost:5000/api/cart/${user._id}`);
+              const cartData = await response.json();
+              setCart(cartData);
+            } catch (error) {
+              console.error('Lỗi khi tải giỏ hàng:', error);
+              setCart({ items: [] });
+            }
+          }
+        } catch (error) {
+          console.error('Lỗi parse userData:', error);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+        }
+      }
+    };
+    
+    checkAuthToken();
+  }, []);
+
   const navigateTo = (page) => {
     setCurrentPage(page);
   };
@@ -32,15 +66,42 @@ export const AppProvider = ({ children }) => {
     setCurrentPage('adminDashboard');
   };
 
-  const login = (userData = null) => {
+  const login = async (userData = null, token = null) => {
     setIsLoggedIn(true);
     setUser(userData);
+    
+    // Lưu token và userData vào localStorage
+    if (token) {
+      localStorage.setItem('authToken', token);
+    }
+    if (userData) {
+      localStorage.setItem('userData', JSON.stringify(userData));
+    }
+    
+    // Tải giỏ hàng từ database khi đăng nhập
+    if (userData && userData._id) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/cart/${userData._id}`);
+        const cartData = await response.json();
+        setCart(cartData);
+      } catch (error) {
+        console.error('Lỗi khi tải giỏ hàng:', error);
+        setCart({ items: [] });
+      }
+    }
+    
     setCurrentPage('home');
   };
 
   const logout = () => {
     setIsLoggedIn(false);
     setUser(null);
+    setCart({ items: [] }); // Xóa giỏ hàng khi đăng xuất
+    
+    // Xóa token và userData khỏi localStorage
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userData');
+    
     setCurrentPage('home');
   };
 
@@ -61,7 +122,8 @@ export const AppProvider = ({ children }) => {
     setCurrentPage('subcategoryProducts');
   };
 
-  const addToCart = (product, quantity = 1) => {
+  const addToCart = async (product, quantity = 1) => {
+    // Cập nhật local state trước
     setCart(prevCart => {
       const existingItem = prevCart.items.find(item => item.product._id === product._id);
       if (existingItem) {
@@ -80,6 +142,23 @@ export const AppProvider = ({ children }) => {
         };
       }
     });
+
+    // Đồng bộ với database nếu user đã đăng nhập
+    if (user && user._id) {
+      try {
+        await fetch('http://localhost:5000/api/cart/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user._id,
+            productId: product._id,
+            quantity
+          })
+        });
+      } catch (error) {
+        console.error('Lỗi khi thêm vào giỏ hàng:', error);
+      }
+    }
   };
 
   const updateCartQuantity = (productId, newQuantity) => {
@@ -105,7 +184,7 @@ export const AppProvider = ({ children }) => {
   };
 
   return (
-    <AppContext.Provider value={{ currentPage, navigateTo, navigateToSonLi, navigateToAdmin, login, logout, isLoggedIn, user, selectedProductId, viewProduct, selectedCategory, viewCategoryProducts, subcategoryId, subcategoryName, viewSubcategoryProducts, cart, addToCart, updateCartQuantity, removeFromCart }}>
+    <AppContext.Provider value={{ currentPage, navigateTo, navigateToSonLi, navigateToAdmin, login, logout, isLoggedIn, user, selectedProductId, viewProduct, selectedCategory, viewCategoryProducts, subcategoryId, subcategoryName, viewSubcategoryProducts, cart, setCart, addToCart, updateCartQuantity, removeFromCart }}>
       {children}
     </AppContext.Provider>
   );

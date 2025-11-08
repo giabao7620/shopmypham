@@ -58,7 +58,7 @@ router.get("/subcategory/:subcategoryId/sort/high-to-low", getProductsBySubcateg
 router.get("/subcategory/:subcategoryId/sort/low-to-high", getProductsBySubcategoryIdSortLowToHigh);
 
 // ✅ Tạo sản phẩm mới kèm upload ảnh
-router.post("/", upload.single("image"), createProduct);
+router.post("/", upload.array("images", 10), createProduct);
 
 // ✅ Cập nhật sản phẩm
 router.put("/:id", updateProduct);

@@ -43,6 +43,7 @@ const productRoutes = require("./routes/productRoutes"); // 🔹 thêm route pro
 const categoryRoutes = require("./routes/categoryRoutes"); // 🔹 thêm route categories
 const subcategoryRoutes = require("./routes/subcategoryRoutes"); // 🔹 thêm route subcategories
 const adminRoutes = require("./routes/adminRoutes");
+const productSpecsRoutes = require("./routes/productSpecsRoutes");
 
 const app = express();
 
@@ -83,6 +84,7 @@ app.use("/subcategories", subcategoryRoutes);
 
 app.use("/cart", require("./routes/cartRoutes"));
 app.use("/orders", require("./routes/orderRoutes"));
+app.use("/product-specs", productSpecsRoutes);
 app.use("/admin", adminRoutes);
 const PORT = process.env.PORT || 8888;
 app.listen(PORT, () =>
