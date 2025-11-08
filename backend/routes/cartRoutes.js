@@ -33,4 +33,14 @@ router.post("/add", async (req, res) => {
   }
 });
 
+// Xóa giỏ hàng khi đăng xuất
+router.delete("/clear/:userId", async (req, res) => {
+  try {
+    await Cart.findOneAndDelete({ user: req.params.userId });
+    res.json({ message: "Giỏ hàng đã được xóa" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

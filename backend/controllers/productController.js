@@ -160,27 +160,62 @@ const getProductByCustomId = async (req, res) => {
 const createProduct = async (req, res) => {
   try {
     console.log('Full req.body:', req.body);
-    const { name, description, price, stock, subcategories_id, image } = req.body;
-    console.log('Extracted data:', { name, description, price, stock, subcategories_id, image });
+    const { name, description, price, stock, subcategories_id, image, images } = req.body;
+    console.log('Files:', req.files);
 
-    let imageUrl = image; // Sử dụng URL từ form input
+    let imageUrl = image;
+    let imageUrls = [];
 
-    // Nếu có file ảnh gửi kèm (upload file)
+    // Xử lý nhiều ảnh nếu có
+    if (images && Array.isArray(images)) {
+      imageUrls = images;
+    } else if (images && typeof images === 'string') {
+      imageUrls = images.split(',').map(url => url.trim());
+    }
+
+    // Nếu có 1 file ảnh
     if (req.file) {
       try {
         const result = await new Promise((resolve, reject) => {
           cloudinary.uploader.upload_stream(
-            { folder: "products" }, // Lưu ảnh vào folder "products" trên Cloudinary
+            { folder: "products" },
             (error, result) => {
               if (error) reject(error);
               else resolve(result);
             }
           ).end(req.file.buffer);
         });
-
         imageUrl = result.secure_url;
       } catch (uploadError) {
-        console.error("❌ Lỗi upload ảnh lên Cloudinary:", uploadError);
+        console.error("❌ Lỗi upload ảnh:", uploadError);
+        return res.status(500).json({ message: "Upload ảnh thất bại" });
+      }
+    }
+
+    // Nếu có nhiều files ảnh
+    if (req.files && req.files.length > 0) {
+      try {
+        const uploadPromises = req.files.map(file => 
+          new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+              { folder: "products" },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+              }
+            ).end(file.buffer);
+          })
+        );
+        
+        const uploadedUrls = await Promise.all(uploadPromises);
+        imageUrls = uploadedUrls;
+        
+        // Ảnh đầu tiên làm ảnh chính
+        if (!imageUrl && uploadedUrls.length > 0) {
+          imageUrl = uploadedUrls[0];
+        }
+      } catch (uploadError) {
+        console.error("❌ Lỗi upload nhiều ảnh:", uploadError);
         return res.status(500).json({ message: "Upload ảnh thất bại" });
       }
     }
@@ -190,14 +225,15 @@ const createProduct = async (req, res) => {
       description,
       price,
       stock,
-      image: imageUrl, // 🔹 link ảnh từ URL hoặc Cloudinary
+      image: imageUrl,
+      images: imageUrls,
       subcategories_id,
     });
 
     const savedProduct = await product.save();
     res.status(201).json(savedProduct);
   } catch (error) {
-    console.error("❌ Lỗi tạo sản phẩm:", error); // 🔹 log lỗi ra console
+    console.error("❌ Lỗi tạo sản phẩm:", error);
     res.status(400).json({ message: "Lỗi tạo sản phẩm", error: error.message });
   }
 };

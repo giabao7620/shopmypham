@@ -62,7 +62,7 @@ export default function Login() {
         setShowModal(true);
         setTimeout(() => {
           setShowModal(false);
-          login(data.user || { name: formData.email });
+          login(data.user || { name: formData.email }, data.token);
         }, 1500);
       } else {
         setModalData({ type: 'error', message: data.message || 'Đăng nhập thất bại!' });

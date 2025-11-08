@@ -1,26 +1,26 @@
 const express = require("express");
 const router = express.Router();
-const Order = require("../models/Order");
+const {
+  createOrder,
+  getOrdersByUserId,
+  getAllOrders,
+  updateOrderStatus,
+  getTopSellingProducts
+} = require("../controllers/orderController");
 
-router.post("/checkout", async (req, res) => {
-  try {
-    const { userId, items } = req.body;
+// Tạo đơn hàng mới
+router.post("/checkout", createOrder);
 
-    const totalPrice = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+// Lấy đơn hàng theo userId
+router.get("/user/:userId", getOrdersByUserId);
 
-    const order = await Order.create({
-      user: userId,
-      items: items.map(i => ({
-        product: i.product._id,
-        quantity: i.quantity,
-      })),
-      totalPrice,
-    });
+// Lấy tất cả đơn hàng (admin)
+router.get("/", getAllOrders);
 
-    res.json({ message: "Đặt hàng thành công!", order });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+// Cập nhật trạng thái đơn hàng
+router.put("/:orderId/status", updateOrderStatus);
+
+// Lấy top sản phẩm bán chạy
+router.get("/top-selling", getTopSellingProducts);
 
 module.exports = router;

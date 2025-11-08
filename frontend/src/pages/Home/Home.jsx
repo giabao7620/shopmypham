@@ -14,6 +14,7 @@ export default function Home() {
   const [hoveredSubcategories, setHoveredSubcategories] = useState({});
   const [subcategoryProductCounts, setSubcategoryProductCounts] = useState({});
   const [allProducts, setAllProducts] = useState([]);
+  const [topSellingProducts, setTopSellingProducts] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -31,6 +32,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchAllProducts();
+    fetchTopSellingProducts();
   }, []);
 
   useEffect(() => {
@@ -49,6 +51,20 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error fetching all products:', error);
+    }
+  };
+
+  const fetchTopSellingProducts = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/orders/top-selling?limit=3`);
+      if (response.ok) {
+        const data = await response.json();
+        setTopSellingProducts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching top selling products:', error);
+      // Fallback nếu không có dữ liệu orders
+      setTopSellingProducts(allProducts.slice(0, 3));
     }
   };
 
@@ -733,7 +749,7 @@ export default function Home() {
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: '30px'
           }}>
-            {allProducts.slice(4, 7).map((product, index) => (
+            {(topSellingProducts.length > 0 ? topSellingProducts : allProducts.slice(4, 7)).map((product, index) => (
               <div key={product._id} style={{
                 backgroundColor: 'white',
                 borderRadius: '20px',
@@ -796,7 +812,7 @@ export default function Home() {
                       backgroundColor: '#4caf50'
                     }}></div>
                     <span style={{ fontSize: '13px', color: '#4caf50', fontWeight: '500' }}>
-                      Bán chạy nhất tuần
+                      Đã bán: {product.totalSold || 0} sản phẩm
                     </span>
                   </div>
                   <button
